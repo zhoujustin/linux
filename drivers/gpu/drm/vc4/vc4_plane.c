@@ -22,6 +22,7 @@
 #include "vc4_regs.h"
 #include "drm_atomic.h"
 #include "drm_atomic_helper.h"
+#include "drm_fourcc.h"
 #include "drm_fb_cma_helper.h"
 #include "drm_plane_helper.h"
 
@@ -499,8 +500,8 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 	u32 ctl0_offset = vc4_state->dlist_count;
 	const struct hvs_format *format = vc4_get_hvs_format(fb->pixel_format);
 	int num_planes = drm_format_num_planes(format->drm);
-	u32 scl0, scl1;
-	u32 lbm_size;
+	u32 scl0, scl1, pitch0;
+	u32 lbm_size, tiling = SCALER_CTL0_TILING_LINEAR;
 	unsigned long irqflags;
 	int ret, i;
 
@@ -541,11 +542,41 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 		scl1 = vc4_get_scl_field(state, 0);
 	}
 
+	switch (fb->modifier[0]) {
+	case DRM_FORMAT_MOD_NONE:
+		tiling = SCALER_CTL0_TILING_LINEAR;
+		pitch0 = VC4_SET_FIELD(fb->pitches[0], SCALER_SRC_PITCH);
+		break;
+
+	case DRM_FORMAT_MOD_BROADCOM_VC4_T_TILED: {
+		/* For T-tiled, the FB pitch is "how many bytes from
+		 * one row to the next, such that pitch * tile_h ==
+		 * tile_size * tiles_per_row."
+		 */
+		u32 tile_size_shift = 12;
+		u32 tile_h_shift = 5;
+		u32 tiles_w = fb->pitches[0] >> (tile_size_shift - tile_h_shift);
+
+		tiling = SCALER_CTL0_TILING_256B_OR_T;
+
+		pitch0 = (VC4_SET_FIELD(0, SCALER_PITCH0_TILE_Y_OFFSET) |
+			  VC4_SET_FIELD(0, SCALER_PITCH0_TILE_WIDTH_L) |
+			  VC4_SET_FIELD(tiles_w, SCALER_PITCH0_TILE_WIDTH_R));
+		break;
+	}
+
+	default:
+		DRM_DEBUG_KMS("Unsupported FB tiling flag 0x%16llx",
+			      (long long)fb->modifier[0]);
+		return -EINVAL;
+	}
+
 	/* Control word */
 	vc4_dlist_write(vc4_state,
 			SCALER_CTL0_VALID |
 			(format->pixel_order << SCALER_CTL0_ORDER_SHIFT) |
 			(format->hvs << SCALER_CTL0_PIXEL_FORMAT_SHIFT) |
+			VC4_SET_FIELD(tiling, SCALER_CTL0_TILING) |
 			(vc4_state->is_unity ? SCALER_CTL0_UNITY : 0) |
 			VC4_SET_FIELD(scl0, SCALER_CTL0_SCL0) |
 			VC4_SET_FIELD(scl1, SCALER_CTL0_SCL1));
@@ -599,8 +630,11 @@ static int vc4_plane_mode_set(struct drm_plane *plane,
 	for (i = 0; i < num_planes; i++)
 		vc4_dlist_write(vc4_state, 0xc0c0c0c0);
 
-	/* Pitch word 0/1/2 */
-	for (i = 0; i < num_planes; i++) {
+	/* Pitch word 0 */
+	vc4_dlist_write(vc4_state, pitch0);
+
+	/* Pitch word 1/2 */
+	for (i = 1; i < num_planes; i++) {
 		vc4_dlist_write(vc4_state,
 				VC4_SET_FIELD(fb->pitches[i], SCALER_SRC_PITCH));
 	}

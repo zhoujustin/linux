@@ -1317,6 +1317,24 @@ static int brcmf_pcie_get_memdump(struct device *dev, void *data, size_t len)
 	return 0;
 }
 
+static int brcmf_pcie_get_fwname(struct device *dev, u32 chip, u32 chiprev,
+				 u8 *fw_name)
+{
+	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
+	struct brcmf_pciedev *buspub = bus_if->bus_priv.pcie;
+	struct brcmf_pciedev_info *devinfo = buspub->devinfo;
+	int ret = 0;
+
+	if (devinfo->fw_name[0] != '\0')
+		strlcpy(fw_name, devinfo->fw_name, BRCMF_FW_NAME_LEN);
+	else
+		ret = brcmf_fw_map_chip_to_name(chip, chiprev,
+						brcmf_pcie_fwnames,
+						ARRAY_SIZE(brcmf_pcie_fwnames),
+						fw_name, NULL);
+
+	return ret;
+}
 
 static const struct brcmf_bus_ops brcmf_pcie_bus_ops = {
 	.txdata = brcmf_pcie_tx,
@@ -1326,6 +1344,7 @@ static const struct brcmf_bus_ops brcmf_pcie_bus_ops = {
 	.wowl_config = brcmf_pcie_wowl_config,
 	.get_ramsize = brcmf_pcie_get_ramsize,
 	.get_memdump = brcmf_pcie_get_memdump,
+	.get_fwname = brcmf_pcie_get_fwname,
 };
 
 
@@ -1618,16 +1637,23 @@ static const struct brcmf_buscore_ops brcmf_pcie_buscore_ops = {
 	.write32 = brcmf_pcie_buscore_write32,
 };
 
-static void brcmf_pcie_setup(struct device *dev, const struct firmware *fw,
+static void brcmf_pcie_setup(struct device *dev, int ret,
+			     const struct firmware *fw,
 			     void *nvram, u32 nvram_len)
 {
-	struct brcmf_bus *bus = dev_get_drvdata(dev);
-	struct brcmf_pciedev *pcie_bus_dev = bus->bus_priv.pcie;
-	struct brcmf_pciedev_info *devinfo = pcie_bus_dev->devinfo;
+	struct brcmf_bus *bus;
+	struct brcmf_pciedev *pcie_bus_dev;
+	struct brcmf_pciedev_info *devinfo;
 	struct brcmf_commonring **flowrings;
-	int ret;
 	u32 i;
 
+	/* check firmware loading result */
+	if (ret)
+		goto fail;
+
+	bus = dev_get_drvdata(dev);
+	pcie_bus_dev = bus->bus_priv.pcie;
+	devinfo = pcie_bus_dev->devinfo;
 	brcmf_pcie_attach(devinfo);
 
 	/* Some of the firmwares have the size of the memory of the device

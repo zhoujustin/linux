@@ -235,7 +235,8 @@ vc4_allocate_bin_bo(struct drm_device *drm)
 	INIT_LIST_HEAD(&list);
 
 	while (true) {
-		struct vc4_bo *bo = vc4_bo_create(drm, size, true);
+		struct vc4_bo *bo = vc4_bo_create(drm, size, true,
+						  VC4_BO_TYPE_BIN);
 
 		if (IS_ERR(bo)) {
 			ret = PTR_ERR(bo);
@@ -372,6 +373,7 @@ static int vc4_v3d_bind(struct device *dev, struct device *master, void *data)
 		return ret;
 	}
 
+	pm_runtime_set_active(dev);
 	pm_runtime_use_autosuspend(dev);
 	pm_runtime_set_autosuspend_delay(dev, 40); /* a little over 2 frames. */
 	pm_runtime_enable(dev);

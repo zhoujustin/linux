@@ -53,6 +53,10 @@ static unsigned int hid_mousepoll_interval = ~0;
 module_param_named(mousepoll, hid_mousepoll_interval, uint, 0644);
 MODULE_PARM_DESC(mousepoll, "Polling interval of mice");
 
+static unsigned int hid_jspoll_interval;
+module_param_named(jspoll, hid_jspoll_interval, uint, 0644);
+MODULE_PARM_DESC(jspoll, "Polling interval of joysticks");
+
 static unsigned int ignoreled;
 module_param_named(ignoreled, ignoreled, uint, 0644);
 MODULE_PARM_DESC(ignoreled, "Autosuspend with active leds");
@@ -971,6 +975,8 @@ static int usbhid_parse(struct hid_device *hid)
 	unsigned int rsize = 0;
 	char *rdesc;
 	int ret, n;
+	int num_descriptors;
+	size_t offset = offsetof(struct hid_descriptor, desc);
 
 	quirks = usbhid_lookup_quirk(le16_to_cpu(dev->descriptor.idVendor),
 			le16_to_cpu(dev->descriptor.idProduct));
@@ -993,10 +999,18 @@ static int usbhid_parse(struct hid_device *hid)
 		return -ENODEV;
 	}
 
+	if (hdesc->bLength < sizeof(struct hid_descriptor)) {
+		dbg_hid("hid descriptor is too short\n");
+		return -EINVAL;
+	}
+
 	hid->version = le16_to_cpu(hdesc->bcdHID);
 	hid->country = hdesc->bCountryCode;
 
-	for (n = 0; n < hdesc->bNumDescriptors; n++)
+	num_descriptors = min_t(int, hdesc->bNumDescriptors,
+	       (hdesc->bLength - offset) / sizeof(struct hid_class_descriptor));
+
+	for (n = 0; n < num_descriptors; n++)
 		if (hdesc->desc[n].bDescriptorType == HID_DT_REPORT)
 			rsize = le16_to_cpu(hdesc->desc[n].wDescriptorLength);
 
@@ -1082,12 +1096,18 @@ static int usbhid_start(struct hid_device *hid)
 			       hid->name, endpoint->bInterval, interval);
 		}
 
-		/* Change the polling interval of mice. */
-		if (hid->collection->usage == HID_GD_MOUSE) {
-				if (hid_mousepoll_interval == ~0 && interval < 16)
-						interval = 16;
-				else if (hid_mousepoll_interval != ~0 && hid_mousepoll_interval != 0)
-						interval = hid_mousepoll_interval;
+		/* Change the polling interval of mice and joysticks. */
+		switch (hid->collection->usage) {
+		case HID_GD_MOUSE:
+			if (hid_mousepoll_interval == ~0 && interval < 16)
+				interval = 16;
+			else if (hid_mousepoll_interval != ~0 && hid_mousepoll_interval != 0)
+				interval = hid_mousepoll_interval;
+			break;
+		case HID_GD_JOYSTICK:
+			if (hid_jspoll_interval > 0)
+				interval = hid_jspoll_interval;
+			break;
 		}
 
 		ret = -ENOMEM;
