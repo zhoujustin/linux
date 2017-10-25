@@ -91,6 +91,15 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c1_pins>;
 	clock-frequency = <100000>;
+	ts@5d {
+		compatible = "goodix, gt9xx";
+		reg = <0x5D>;
+		max-x = <800>;
+		max-y = <480>;
+		touch-gpio = <&gpio 5, 1>;
+		reset-gpio = <&gpio 6, 0>;
+		tp-size = <911>
+	};
 };
 
 &i2c2 {
