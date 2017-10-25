@@ -23,6 +23,10 @@
 
 #include "gt9xx.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdate-time"
+//... code with __DATE_ __TIME__
+
 #define DATA_LENGTH_UINT    512
 #define CMD_HEAD_LENGTH     (sizeof(st_cmd_head) - sizeof(u8*))
 static char procname[20] = {0};
@@ -625,3 +629,4 @@ ssize_t goodix_tool_read(struct file *file, char __user *page, size_t size, loff
     }
     return -EPERM;
 }
+#pragma GCC diagnostic pop
