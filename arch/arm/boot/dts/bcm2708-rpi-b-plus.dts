@@ -96,8 +96,8 @@
 		reg = <0x5D>;
 		max-x = <800>;
 		max-y = <480>;
-		touch-gpio = <&gpio 5, 1>;
-		reset-gpio = <&gpio 6, 0>;
+		touch-gpio = <&gpio 5 1>;
+		reset-gpio = <&gpio 6 0>;
 		tp-size = <911>
 	};
 };
