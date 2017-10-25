@@ -57,6 +57,10 @@ test
     #include <linux/input/mt.h>
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdate-time"
+//... code with __DATE_ __TIME__
+
 static const char *goodix_ts_name = "goodix-ts";
 static struct workqueue_struct *goodix_wq;
 struct i2c_client * i2c_connect_client = NULL; 
@@ -3137,3 +3141,4 @@ module_exit(goodix_ts_exit);
 
 MODULE_DESCRIPTION("GTP Series Driver");
 MODULE_LICENSE("GPL");
+#pragma GCC diagnostic pop
