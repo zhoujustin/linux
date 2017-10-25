@@ -98,7 +98,7 @@
 		max-y = <480>;
 		touch-gpio = <&gpio 5 1>;
 		reset-gpio = <&gpio 6 0>;
-		tp-size = <911>
+		tp-size = <911>;
 	};
 };
 
