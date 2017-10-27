@@ -48,6 +48,10 @@ test
  *                  By Meta, 2014/01/14
  */
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdate-time"
+//... code with __DATE_ __TIME__
+
 #include <linux/irq.h>
 #include "gt9xx.h"
 
@@ -3137,3 +3141,6 @@ module_exit(goodix_ts_exit);
 
 MODULE_DESCRIPTION("GTP Series Driver");
 MODULE_LICENSE("GPL");
+
+#pragma GCC diagnostic pop
+
