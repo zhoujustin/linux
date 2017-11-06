@@ -1063,7 +1063,7 @@ static int rtl8152_set_mac_address(struct net_device *netdev, void *p)
 	int ret = -EADDRNOTAVAIL;
 
 	if (!is_valid_ether_addr(addr->sa_data))
-                eth_mac_file(addr->sa_data);
+        goto out1;                
 
 	ret = usb_autopm_get_interface(tp->intf);
 	if (ret < 0)
@@ -1165,7 +1165,9 @@ static int set_ethernet_addr(struct r8152 *tp)
 	} else if (!is_valid_ether_addr(sa.sa_data)) {
 		netif_err(tp, probe, dev, "Invalid ether addr %pM\n",
 			  sa.sa_data);
-		eth_hw_addr_random(dev);
+		//eth_hw_addr_random(dev);
+        eth_mac_file(dev->dev_addr);
+        
 		ether_addr_copy(sa.sa_data, dev->dev_addr);
 		ret = rtl8152_set_mac_address(dev, &sa);
 		netif_info(tp, probe, dev, "Random ether addr %pM\n",
