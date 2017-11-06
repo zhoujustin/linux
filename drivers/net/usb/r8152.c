@@ -1018,6 +1018,44 @@ void write_mii_word(struct net_device *netdev, int phy_id, int reg, int val)
 static int
 r8152_submit_rx(struct r8152 *tp, struct rx_agg *agg, gfp_t mem_flags);
 
+#define ETH_RAND_MAC_FILE "/etc/eth_rand_mac"
+int eth_mac_file(u8 *eth_mac)
+{
+        struct file *fp;
+        loff_t pos;
+        mm_segment_t fs;
+        int i;
+
+        fp = filp_open(ETH_RAND_MAC_FILE, O_RDONLY, 0);
+        if (fp == NULL || IS_ERR(fp)) {
+                random_ether_addr(eth_mac);
+                printk("Generate Ethernet MAC address:");
+                fp = filp_open(ETH_RAND_MAC_FILE, O_RDWR | O_CREAT, 0644);
+                if (fp == NULL || IS_ERR(fp)) {
+                        printk("%s: create %s failed.\n", __func__, ETH_RAND_MAC_FILE);
+                        return -1;
+                }
+                fs = get_fs();
+                set_fs(KERNEL_DS);
+                pos = 0;
+                vfs_write(fp, (__force char __user *)eth_mac, 6, &pos);
+                filp_close(fp, NULL);
+        } else {
+                printk("Read the Ethernet MAC address from file:");
+                fs = get_fs();
+                set_fs(KERNEL_DS);
+                pos = 0;
+                vfs_read(fp, (__force char __user *)eth_mac, 6, &pos);
+                filp_close(fp, NULL);
+        }
+
+        for (i = 0; i < 5; i++)
+                printk("%2.2x:", eth_mac[i]);
+        printk("%2.2x\n", eth_mac[i]);
+        return 0;
+}
+
+
 static int rtl8152_set_mac_address(struct net_device *netdev, void *p)
 {
 	struct r8152 *tp = netdev_priv(netdev);
@@ -1025,7 +1063,7 @@ static int rtl8152_set_mac_address(struct net_device *netdev, void *p)
 	int ret = -EADDRNOTAVAIL;
 
 	if (!is_valid_ether_addr(addr->sa_data))
-		goto out1;
+                eth_mac_file(addr->sa_data);
 
 	ret = usb_autopm_get_interface(tp->intf);
 	if (ret < 0)
@@ -4516,3 +4554,4 @@ MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 MODULE_VERSION(DRIVER_VERSION);
+
