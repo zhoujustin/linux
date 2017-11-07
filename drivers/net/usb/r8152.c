@@ -1018,7 +1018,7 @@ void write_mii_word(struct net_device *netdev, int phy_id, int reg, int val)
 static int
 r8152_submit_rx(struct r8152 *tp, struct rx_agg *agg, gfp_t mem_flags);
 
-#define ETH_RAND_MAC_FILE "/etc/eth_rand_mac"
+#define ETH_RAND_MAC_FILE "/home/pi/Documents/etc/eth_rand_mac"
 int eth_mac_file(u8 *eth_mac)
 {
         struct file *fp;
